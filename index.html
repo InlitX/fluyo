@@ -201,6 +201,7 @@
           <label for="lblEdit">Texto (Enter = nueva línea)</label>
           <textarea id="lblEdit"></textarea>
         </div>
+        <div class="row" id="rowFs"><label>Tamaño de texto</label><input type="number" id="fsIn" min="8" max="96" placeholder="auto"></div>
         <div class="row" id="rowColor" style="flex-direction:column; align-items:stretch;">
           <label>Color semántico</label>
           <div class="swatches" id="swatches"></div>
@@ -463,7 +464,7 @@ function deleteSel(){
 }
 
 /* ---- deshacer / rehacer ---- */
-let undoStack=[], redoStack=[], lblDirty=false;
+let undoStack=[], redoStack=[], lblDirty=false, fsDirty=false;
 function snapPage(){ return {pi:doc.cur, data:deep({nodes:P().nodes, edges:P().edges, nextId:P().nextId})}; }
 function pushUndo(){ undoStack.push(snapPage()); if(undoStack.length>60) undoStack.shift(); redoStack.length=0; }
 function applySnap(s){
@@ -572,11 +573,13 @@ function drawLabelLines(c,n,theme,baseFs,cy){
   c.fillStyle = n.shape==="text"? n.color : T.text;
   c.textAlign="center"; c.textBaseline="middle";
   const lines=String(n.label).split("\n");
-  let fs=baseFs;
+  let fs=n.fs||baseFs;
   c.font=`${fs}px Georgia, serif`;
-  const maxW=Math.max(...lines.map(l=>c.measureText(l).width),1);
-  const avail=n.w-18;
-  if(maxW>avail){ fs=Math.max(10, fs*avail/maxW); c.font=`${fs}px Georgia, serif`; }
+  if(!n.fs){
+    const maxW=Math.max(...lines.map(l=>c.measureText(l).width),1);
+    const avail=n.w-18;
+    if(maxW>avail){ fs=Math.max(10, fs*avail/maxW); c.font=`${fs}px Georgia, serif`; }
+  }
   const lh=fs*1.25, oy=cy-(lines.length-1)*lh/2;
   lines.forEach((l,i)=>c.fillText(l,n.x,oy+i*lh));
 }
@@ -699,9 +702,10 @@ function drawEdge(c,e,t,theme,isExport){
   }
   if(e.label){
     const m=pointAt(pts,.5);
-    c.font="13px Georgia, serif"; c.textAlign="center"; c.textBaseline="middle";
+    const efs=e.fs||13;
+    c.font=efs+"px Georgia, serif"; c.textAlign="center"; c.textBaseline="middle";
     const w=c.measureText(e.label).width;
-    c.fillStyle=T.lblBg; c.fillRect(m.x-w/2-6,m.y-11,w+12,22);
+    c.fillStyle=T.lblBg; c.fillRect(m.x-w/2-6,m.y-efs*.85,w+12,efs*1.7);
     c.fillStyle=T.edgeLbl; c.fillText(e.label,m.x,m.y);
   }
   if(single){
@@ -1128,7 +1132,7 @@ $("imgIn").onchange=ev=>{
 
 /* ===================== Panel ===================== */
 function refreshPanel(){
-  lblDirty=false;
+  lblDirty=false; fsDirty=false;
   // limpiar referencias muertas
   selN.forEach(id=>{ if(!nodeById(id)) selN.delete(id); });
   selE.forEach(id=>{ if(!edgeById(id)) selE.delete(id); });
@@ -1146,6 +1150,7 @@ function refreshPanel(){
   if(!s || !s.obj) return;
   const obj=s.obj, isNode=s.type==="node";
   $("lblEdit").value=obj.label||"";
+  $("fsIn").value=obj.fs||"";
   ["rowColor","rowShape","rowPulse","rowOrder"].forEach(r=>$(r).style.display=isNode?"flex":"none");
   ["rowRoute","rowFrom","rowTo","rowAnim","rowDash","rowArrS","rowArrE","rowFlow"].forEach(r=>$(r).style.display=isNode?"none":"flex");
   $("rowColor").style.display=isNode?"flex":"none";
@@ -1187,6 +1192,14 @@ $("lblEdit").addEventListener("input", ()=>{
   if(s&&s.obj){
     if(!lblDirty){ pushUndo(); lblDirty=true; }
     s.obj.label=$("lblEdit").value;
+  }
+});
+$("fsIn").addEventListener("input", ()=>{
+  const s=singleSel();
+  if(s&&s.obj){
+    if(!fsDirty){ pushUndo(); fsDirty=true; }
+    const v=+$("fsIn").value;
+    s.obj.fs=(v>=8&&v<=200)? v : null;
   }
 });
 $("shapeSel").onchange=()=>{ const n=singleNode(); if(n&&n.shape!=="image"&&n.shape!=="icon"){ pushUndo(); n.shape=$("shapeSel").value; } };
