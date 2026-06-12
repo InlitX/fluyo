@@ -505,6 +505,22 @@ function inferSide(n,p){
   const dx=(p.x-n.x)/(n.w/2||1), dy=(p.y-n.y)/(n.h/2||1);
   return Math.abs(dx)>Math.abs(dy)? (dx>0?"e":"w") : (dy>0?"s":"n");
 }
+function nearestAnchorSide(n,p,maxDist){
+  let best=null, bd=maxDist;
+  for(const s of SIDES){
+    const q=sidePoint(n,s), d=Math.hypot(p.x-q.x,p.y-q.y);
+    if(d<bd){ bd=d; best=s; }
+  }
+  return best;
+}
+function sideOfPoint(n,p){
+  const t=3;
+  if(Math.abs(p.y-(n.y-n.h/2))<t) return "n";
+  if(Math.abs(p.y-(n.y+n.h/2))<t) return "s";
+  if(Math.abs(p.x-(n.x-n.w/2))<t) return "w";
+  if(Math.abs(p.x-(n.x+n.w/2))<t) return "e";
+  return inferSide(n,p);
+}
 function orthoRoute(p1,d1,p2,d2){
   const pad=28;
   const s={x:p1.x+d1.x*pad, y:p1.y+d1.y*pad};
@@ -775,6 +791,19 @@ function render(c,t,opts={}){
         if(hoverNode && hoverNode.id!==A.id){
           c.strokeStyle="#3aa7e8"; c.lineWidth=2.5;
           c.strokeRect(hoverNode.x-hoverNode.w/2-4,hoverNode.y-hoverNode.h/2-4,hoverNode.w+8,hoverNode.h+8);
+          // 4 puntos de anclaje del destino
+          const near=nearestAnchorSide(hoverNode,mouse,22);
+          for(const s of SIDES){
+            const q=sidePoint(hoverNode,s);
+            c.beginPath(); c.arc(q.x,q.y,6,0,Math.PI*2);
+            if(s===near){
+              c.fillStyle="#3aa7e8"; c.fill();
+              c.strokeStyle="#fff"; c.lineWidth=1.6; c.stroke();
+            } else {
+              c.fillStyle=theme==="crema"?"#f4eee1":"#161616"; c.fill();
+              c.strokeStyle="#3aa7e8"; c.lineWidth=1.6; c.stroke();
+            }
+          }
         }
         c.restore();
       }
@@ -937,9 +966,16 @@ cv.addEventListener("pointerdown", ev=>{
     for(const e of P().edges){
       if(selN.has(e.from)&&selN.has(e.to))
         (e.waypoints||[]).forEach(w=>drag.wps.push({w, dx:p.x-w.x, dy:p.y-w.y}));
-      // si solo un extremo se mueve, la flecha se re-rutea automáticamente
-      else if((selN.has(e.from)||selN.has(e.to)) && (e.waypoints||[]).length)
-        e.waypoints=[];
+      // si solo un extremo se mueve: conservar la topología (lados) y re-rutear
+      else if((selN.has(e.from)||selN.has(e.to)) && (e.waypoints||[]).length){
+        const pts=edgePoints(e);
+        if(pts.length>1){
+          const A2=nodeById(e.from), B2=nodeById(e.to);
+          if(A2 && !e.fromSide) e.fromSide=sideOfPoint(A2,pts[0]);
+          if(B2 && !e.toSide)   e.toSide=sideOfPoint(B2,pts[pts.length-1]);
+        }
+        e.waypoints=[]; e.route="ortho";
+      }
     }
     return;
   }
@@ -1005,7 +1041,12 @@ cv.addEventListener("pointerup", ev=>{
     const tgt=hitNode(p.x,p.y);
     if(tgt && tgt.id!==connectDrag.fromId){
       pushUndo();
-      const e=newEdge(connectDrag.fromId,tgt.id,{route:"ortho"});
+      const snapSide=nearestAnchorSide(tgt,p,22);
+      const e=newEdge(connectDrag.fromId,tgt.id,{
+        fromSide:connectDrag.fromSide,
+        toSide:snapSide,
+        route:"ortho"
+      });
       if(e) selectOnly("edge",e.id);
     }
     connectDrag=null;
