@@ -224,7 +224,15 @@
         <div class="row" id="rowTo"><label>Entra por</label>
           <select id="toSel"><option value="">Auto</option><option value="n">Arriba</option><option value="e">Derecha</option><option value="s">Abajo</option><option value="w">Izquierda</option></select>
         </div>
-        <div class="row" id="rowAnim"><label>Flujo animado</label><input type="checkbox" id="animChk"></div>
+        <div class="row" id="rowAnim"><label>Puntos animados</label><input type="checkbox" id="animChk"></div>
+        <div class="row" id="rowLineC" style="flex-direction:column; align-items:stretch;">
+          <label>Color de línea</label>
+          <div class="swatches" id="lineSw"></div>
+        </div>
+        <div class="row" id="rowDotC" style="flex-direction:column; align-items:stretch;">
+          <label>Color de puntos</label>
+          <div class="swatches" id="dotSw"></div>
+        </div>
         <div class="row" id="rowDash"><label>Línea punteada</label><input type="checkbox" id="dashChk"></div>
         <div class="row" id="rowArrS"><label>Punta al inicio</label><input type="checkbox" id="arrSChk"></div>
         <div class="row" id="rowArrE"><label>Punta al final</label><input type="checkbox" id="arrEChk"></div>
@@ -273,7 +281,7 @@
       <select id="exFps"><option>15</option><option selected>20</option><option>25</option></select>
     </div>
     <div class="row" id="exRowDur"><label>Duración (s)</label><input type="number" id="exDur" min="1" max="15" step="0.5" value="3"></div>
-    <p class="hint" id="exHint">El loop de flujo se ajusta solo para que el GIF sea perfectamente cíclico.</p>
+    <p class="hint" id="exHint">El loop de flujo se ajusta solo para que el GIF sea cíclico. La transparencia en GIF es de bordes duros (limitación del formato); para bordes suaves usa PNG.</p>
     <div class="actions">
       <button id="exCancel">Cancelar</button>
       <button id="exGo" class="primary">Exportar</button>
@@ -669,7 +677,8 @@ function drawEdge(c,e,t,theme,isExport){
   const seld=!isExport && selE.has(e.id);
   const single=!isExport && (()=>{ const s=singleSel(); return s && s.type==="edge" && s.obj && s.obj.id===e.id; })();
   c.save(); c.globalAlpha=a;
-  c.strokeStyle=seld? "#3aa7e8":T.edge; c.lineWidth=seld?2.6:2;
+  const lineCol=e.lineColor||T.edge;
+  c.strokeStyle=seld? "#3aa7e8":lineCol; c.lineWidth=seld?2.6:2;
   c.lineJoin="round";
   if(e.dashed) c.setLineDash([8,7]);
   c.beginPath(); c.moveTo(pts[0].x,pts[0].y);
@@ -678,13 +687,13 @@ function drawEdge(c,e,t,theme,isExport){
 
   const last=pts[pts.length-1], prev=pts[pts.length-2];
   if(e.endArrow!==false)
-    arrowHead(c,last.x,last.y,Math.atan2(last.y-prev.y,last.x-prev.x), seld?"#3aa7e8":T.edge);
+    arrowHead(c,last.x,last.y,Math.atan2(last.y-prev.y,last.x-prev.x), seld?"#3aa7e8":lineCol);
   if(e.startArrow){
     const f0=pts[0], f1=pts[1];
-    arrowHead(c,f0.x,f0.y,Math.atan2(f0.y-f1.y,f0.x-f1.x), seld?"#3aa7e8":T.edge);
+    arrowHead(c,f0.x,f0.y,Math.atan2(f0.y-f1.y,f0.x-f1.x), seld?"#3aa7e8":lineCol);
   }
   if(e.animated){
-    c.fillStyle=A.color;
+    c.fillStyle=e.dotColor||A.color;
     const n=settings.dots;
     for(let i=0;i<n;i++){
       let base=(t*settings.speed + i/n)%1; if(base<0)base+=1;
@@ -742,7 +751,8 @@ function render(c,t,opts={}){
   const theme=doc.theme, T=THEMES[theme];
   const isExport=!!opts.export;
   c.clearRect(0,0,W,H);
-  if(!opts.transparent){ c.fillStyle=T.bg; c.fillRect(0,0,W,H); }
+  if(opts.bg){ c.fillStyle=opts.bg; c.fillRect(0,0,W,H); }
+  else if(!opts.transparent){ c.fillStyle=T.bg; c.fillRect(0,0,W,H); }
   if(!isExport){
     c.strokeStyle=T.grid; c.lineWidth=1; c.beginPath();
     for(let x=GRID;x<W;x+=GRID){c.moveTo(x,0);c.lineTo(x,H);}
@@ -1152,7 +1162,7 @@ function refreshPanel(){
   $("lblEdit").value=obj.label||"";
   $("fsIn").value=obj.fs||"";
   ["rowColor","rowShape","rowPulse","rowOrder"].forEach(r=>$(r).style.display=isNode?"flex":"none");
-  ["rowRoute","rowFrom","rowTo","rowAnim","rowDash","rowArrS","rowArrE","rowFlow"].forEach(r=>$(r).style.display=isNode?"none":"flex");
+  ["rowRoute","rowFrom","rowTo","rowAnim","rowDash","rowArrS","rowArrE","rowFlow","rowLineC","rowDotC"].forEach(r=>$(r).style.display=isNode?"none":"flex");
   $("rowColor").style.display=isNode?"flex":"none";
   $("btnWps").style.display=(!isNode&&(obj.waypoints||[]).length)?"block":"none";
   if(isNode){
@@ -1170,6 +1180,8 @@ function refreshPanel(){
     $("arrSChk").checked=!!obj.startArrow;
     $("arrEChk").checked=obj.endArrow!==false;
     $("flowSel").value=obj.flowDir||"normal";
+    [...$("lineSw").children].forEach(sw=>sw.classList.toggle("sel", (obj.lineColor||"")===sw.dataset.c));
+    [...$("dotSw").children].forEach(sw=>sw.classList.toggle("sel", (obj.dotColor||"")===sw.dataset.c));
   }
 }
 PALETTE.forEach(p=>{
@@ -1187,6 +1199,21 @@ PALETTE.forEach(p=>{
 });
 function singleNode(){ const s=singleSel(); return s&&s.type==="node"?s.obj:null; }
 function singleEdge(){ const s=singleSel(); return s&&s.type==="edge"?s.obj:null; }
+function buildEdgeSwatches(containerId, field){
+  const cont=$(containerId);
+  const mk=(color,title)=>{
+    const d=document.createElement("div");
+    d.className="swatch";
+    d.style.background = color || "repeating-linear-gradient(45deg,#5a5a5a 0 4px,#2e3134 4px 8px)";
+    d.title=title; d.dataset.c=color||"";
+    d.onclick=()=>{ const e=singleEdge(); if(e){ pushUndo(); e[field]=color; refreshPanel(); } };
+    cont.appendChild(d);
+  };
+  mk(null,"Auto");
+  PALETTE.forEach(p=>mk(p.c,p.n));
+}
+buildEdgeSwatches("lineSw","lineColor");
+buildEdgeSwatches("dotSw","dotColor");
 $("lblEdit").addEventListener("input", ()=>{
   const s=singleSel();
   if(s&&s.obj){
@@ -1363,7 +1390,7 @@ $("btnDemo").onclick=()=>{
 const exModal=$("exModal");
 function syncExportRows(){
   const f=$("exFmt").value;
-  $("exRowTr").style.display = f==="png" ? "flex":"none";
+  $("exRowTr").style.display = (f==="png"||f==="gif") ? "flex":"none";
   $("exRowFps").style.display = f==="gif" ? "flex":"none";
   $("exRowDur").style.display = f==="gif" ? "flex":"none";
   $("exHint").style.display = f==="gif" ? "block":"none";
@@ -1377,7 +1404,7 @@ $("exGo").onclick=()=>{
   const fmt=$("exFmt").value, scale=+$("exRes").value;
   exModal.style.display="none";
   if(P().nodes.length===0){ alert("La página está vacía."); return; }
-  if(fmt==="gif") exportGIF(scale);
+  if(fmt==="gif") exportGIF(scale, $("exTr").checked);
   else exportStatic(fmt, scale, $("exTr").checked);
 };
 function exportStatic(fmt,scale,transparent){
@@ -1403,7 +1430,7 @@ async function getWorker(){
   workerUrl=URL.createObjectURL(new Blob([src],{type:"application/javascript"}));
   return workerUrl;
 }
-async function exportGIF(scale){
+async function exportGIF(scale, transparent){
   const fps=+$("exFps").value;
   let dur=clamp(+$("exDur").value||3,1,15);
   const bDur=buildDuration();
@@ -1418,12 +1445,18 @@ async function exportGIF(scale){
     const w=Math.round(W*scale), h=Math.round(H*scale);
     const off=document.createElement("canvas"); off.width=w; off.height=h;
     const oc=off.getContext("2d");
-    const gif=new GIF({workers:2, quality:8, width:w, height:h, workerScript:wurl});
+    const keyNum = doc.theme==="crema"? 0xfefdfc : 0x010101;
+    const keyCss = doc.theme==="crema"? "#fefdfc" : "#010101";
+    const gifOpts={workers:2, quality:8, width:w, height:h, workerScript:wurl};
+    if(transparent) gifOpts.transparent=keyNum;
+    const gif=new GIF(gifOpts);
     const frames=Math.round(dur*fps);
     settings.speed=exSpeed;
     for(let f=0;f<frames;f++){
       const t=f/fps;
-      oc.save(); oc.scale(scale,scale); render(oc,t,{export:true}); oc.restore();
+      oc.save(); oc.scale(scale,scale);
+      render(oc,t, transparent? {export:true, bg:keyCss} : {export:true});
+      oc.restore();
       gif.addFrame(off,{copy:true, delay:Math.round(1000/fps)});
       if(f%5===0){ fill.style.width=(f/frames*40)+"%"; await new Promise(r=>setTimeout(r)); }
     }
