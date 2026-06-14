@@ -121,6 +121,50 @@
   @media (prefers-reduced-motion: reduce){ #barFill{transition:none;} }
   .card .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
   kbd{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px;}
+
+  /* ============ Responsive ============ */
+  @media (max-width: 700px) {
+    header { gap: 4px; padding: 5px 8px; }
+    header .logo { font-size: 15px; }
+    #btnClear { display: none; }
+
+    main { flex-direction: column; }
+
+    .rail {
+      width: 100%; height: auto;
+      flex-direction: row; flex-wrap: nowrap;
+      overflow-x: auto; overflow-y: hidden;
+      padding: 4px 6px; gap: 2px;
+      border-right: none; border-bottom: 1px solid var(--line);
+    }
+    .rail button {
+      width: auto; min-width: 40px; height: 36px;
+      flex-direction: row; gap: 4px;
+      font-size: 8.5px; flex-shrink: 0; padding: 4px 6px;
+    }
+    .rail button svg { width: 16px; height: 16px; }
+    .rail hr {
+      width: 1px; height: 22px;
+      border-top: none; border-left: 1px solid var(--line);
+      margin: 0 1px; flex-shrink: 0;
+    }
+
+    .stage { padding: 6px; }
+    #wrap { width: min(100%, calc((100dvh - 220px) * 1.7778), 1500px); }
+
+    aside { display: none; }
+
+    #iconDrawer {
+      left: 4px; right: 4px; width: auto;
+      top: auto; bottom: 46px;
+    }
+  }
+
+  @media (min-width: 701px) and (max-width: 1024px) {
+    aside { width: 200px; }
+    .row input[type=range] { width: 90px; }
+    .row select { width: 100px; }
+  }
 </style>
 </head>
 <body>
