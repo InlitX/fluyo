@@ -1,0 +1,10 @@
+{
+  "name": "Fluyo",
+  "short_name": "Fluyo",
+  "description": "Editor de diagramas animados de arquitectura, gratis y local-first.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111213",
+  "theme_color": "#111213",
+  "icons": []
+}
