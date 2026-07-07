@@ -276,6 +276,18 @@
           <select id="toSel"><option value="">Auto</option><option value="n">Arriba</option><option value="e">Derecha</option><option value="s">Abajo</option><option value="w">Izquierda</option></select>
         </div>
         <div class="row" id="rowAnim"><label>Puntos animados</label><input type="checkbox" id="animChk"></div>
+        <div class="row" id="rowSpeedF"><label>Velocidad (× global)</label>
+          <select id="speedFacSel">
+            <option value="1">1× (global)</option>
+            <option value="2">2×</option>
+            <option value="3">3×</option>
+            <option value="4">4×</option>
+          </select>
+        </div>
+        <div class="row" id="rowDotsGlobal"><label>Puntos globales</label><input type="checkbox" id="dotsGlobalChk"></div>
+        <div class="row" id="rowDots"><label>Puntos (esta flecha)</label>
+          <input type="number" id="edgeDotsIn" min="1" max="6" step="1">
+        </div>
         <div class="row" id="rowLineC" style="flex-direction:column; align-items:stretch;">
           <label>Color de línea</label>
           <div class="swatches" id="lineSw"></div>
@@ -502,7 +514,8 @@ function newNode(shape,x,y,extra={}){
 function newEdge(a,b,opts={}){
   if(a===b) return null;
   const e=Object.assign({ id:P().nextId++, from:a, to:b, fromSide:null, toSide:null,
-    route:"straight", waypoints:[], label:"", animated:true, dashed:false, startArrow:false, endArrow:true, flowDir:"normal" }, opts);
+    route:"straight", waypoints:[], label:"", animated:true, dashed:false, startArrow:false, endArrow:true, flowDir:"normal",
+    speedFactor:1, dotCount:null }, opts);
   P().edges.push(e); return e;
 }
 
@@ -893,9 +906,9 @@ function drawEdge(c,e,t,theme,isExport){
   }
   if(e.animated){
     c.fillStyle=e.dotColor||A.color;
-    const n=settings.dots;
+    const n = e.dotCount ?? settings.dots;
     for(let i=0;i<n;i++){
-      let base=(t*settings.speed + i/n)%1; if(base<0)base+=1;
+      let base=(t*settings.speed*(e.speedFactor||1) + i/n)%1; if(base<0)base+=1;
       let f=base;
       if(e.flowDir==="reverse") f=1-base;
       else if(e.flowDir==="alternate") f=1-Math.abs(1-2*base);
@@ -1480,7 +1493,7 @@ function refreshPanel(){
   $("lblEdit").value=obj.label||"";
   $("fsIn").value=obj.fs||"";
   ["rowColor","rowShape","rowPulse","rowOrder"].forEach(r=>$(r).style.display=isNode?"flex":"none");
-  ["rowRoute","rowFrom","rowTo","rowAnim","rowDash","rowArrS","rowArrE","rowFlow","rowLineC","rowDotC"].forEach(r=>$(r).style.display=isNode?"none":"flex");
+  ["rowRoute","rowFrom","rowTo","rowAnim","rowDash","rowArrS","rowArrE","rowFlow","rowSpeedF","rowDotsGlobal","rowDots","rowLineC","rowDotC"].forEach(r=>$(r).style.display=isNode?"none":"flex");
   $("rowColor").style.display=isNode?"flex":"none";
   $("btnWps").style.display=(!isNode&&(obj.waypoints||[]).length)?"block":"none";
   if(isNode){
@@ -1498,6 +1511,11 @@ function refreshPanel(){
     $("arrSChk").checked=!!obj.startArrow;
     $("arrEChk").checked=obj.endArrow!==false;
     $("flowSel").value=obj.flowDir||"normal";
+    $("speedFacSel").value=String(obj.speedFactor||1);
+    const usaPuntosGlobales = obj.dotCount == null;
+    $("dotsGlobalChk").checked = usaPuntosGlobales;
+    $("rowDots").style.display = usaPuntosGlobales ? "none" : "flex";
+    $("edgeDotsIn").value = usaPuntosGlobales ? settings.dots : obj.dotCount;
     [...$("lineSw").children].forEach(sw=>sw.classList.toggle("sel", (obj.lineColor||"")===sw.dataset.c));
     [...$("dotSw").children].forEach(sw=>sw.classList.toggle("sel", (obj.dotColor||"")===sw.dataset.c));
   }
@@ -1560,6 +1578,9 @@ $("dashChk").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.dashed=$(
 $("arrSChk").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.startArrow=$("arrSChk").checked; scheduleAutosave(); } };
 $("arrEChk").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.endArrow=$("arrEChk").checked; scheduleAutosave(); } };
 $("flowSel").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.flowDir=$("flowSel").value; scheduleAutosave(); } };
+$("speedFacSel").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.speedFactor=+$("speedFacSel").value||1; scheduleAutosave(); } };
+$("dotsGlobalChk").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.dotCount = $("dotsGlobalChk").checked ? null : clamp(+$("edgeDotsIn").value||settings.dots,1,6); refreshPanel(); scheduleAutosave(); } };
+$("edgeDotsIn").onchange=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.dotCount=clamp(+$("edgeDotsIn").value||settings.dots,1,6); scheduleAutosave(); } };
 $("btnWps").onclick=()=>{ const e=singleEdge(); if(e){ pushUndo(); e.waypoints=[]; refreshPanel(); scheduleAutosave(); } };
 $("btnDel").onclick=deleteSel;
 $("mCopy").onclick=copySel;
