@@ -122,6 +122,18 @@
           <select id="toSel"><option value="">Auto</option><option value="n">Arriba</option><option value="e">Derecha</option><option value="s">Abajo</option><option value="w">Izquierda</option></select>
         </div>
         <div class="row" id="rowAnim"><label>Puntos animados</label><input type="checkbox" id="animChk"></div>
+        <div class="row" id="rowSpeedF"><label>Velocidad (× global)</label>
+          <select id="speedFacSel">
+            <option value="1">1× (global)</option>
+            <option value="2">2×</option>
+            <option value="3">3×</option>
+            <option value="4">4×</option>
+          </select>
+        </div>
+        <div class="row" id="rowDotsGlobal"><label>Puntos globales</label><input type="checkbox" id="dotsGlobalChk"></div>
+        <div class="row" id="rowDots"><label>Puntos (esta flecha)</label>
+          <input type="number" id="edgeDotsIn" min="1" max="6" step="1">
+        </div>
         <div class="row" id="rowLineC" style="flex-direction:column; align-items:stretch;">
           <label>Color de línea</label>
           <div class="swatches" id="lineSw"></div>
